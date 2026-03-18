@@ -16,9 +16,10 @@ jupyter notebook
 
 **Run in Docker:**
 ```bash
-docker build -t drug-response .
-docker run -it drug-response
+docker build -t drug_response_env .
+docker run -p 8888:8888 drug_response_env
 ```
+Then open the URL printed in the terminal (e.g. `http://127.0.0.1:8888/?token=...`) in your browser. Notebooks will open with the `drug_response_env` kernel.
 
 ## Data
 
