@@ -8,12 +8,6 @@ Predict cancer cell line sensitivity (LN_IC50) to drugs from gene expression dat
 
 ## Environment
 
-**Run locally with Jupyter:**
-```bash
-pip install -r requirements.txt
-jupyter notebook
-```
-
 **Run in Docker:**
 ```bash
 docker build -t drug_response_env .
