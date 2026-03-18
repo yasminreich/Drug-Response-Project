@@ -17,9 +17,13 @@ jupyter notebook
 **Run in Docker:**
 ```bash
 docker build -t drug_response_env .
-docker run -p 8888:8888 drug_response_env
+docker run -it --rm \
+    -v $(pwd):/app \
+    -p 8888:8888 \
+    drug_response_env \
+    jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root
 ```
-Then open the URL printed in the terminal (e.g. `http://127.0.0.1:8888/?token=...`) in your browser. Notebooks will open with the `drug_response_env` kernel.
+Then open the URL printed in the terminal (e.g. `http://127.0.0.1:8888/?token=...`) in your browser. The `-v $(pwd):/app` mount means any changes made inside the notebook are saved directly to your local files.
 
 ## Data
 
