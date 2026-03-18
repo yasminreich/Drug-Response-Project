@@ -44,6 +44,25 @@ GDSC2 (COSMIC_ID) ──→ Model.csv (COSMIC_ID / ModelID) ──→ Expression
 
 **Expression matrix:** Filter to `IsDefaultEntryForModel == 'Yes'` (string, not boolean) before merging — ensures one expression profile per cell line.
 
+## Plot Output Convention
+
+All notebooks must save figures to `output/` (gitignored) at `dpi=150` with `bbox_inches="tight"`. Set this up once in the setup cell:
+
+```python
+import os
+OUTPUT_DIR = "../output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+```
+
+Then before every `plt.show()`:
+
+```python
+plt.savefig(os.path.join(OUTPUT_DIR, "descriptive_name.png"), dpi=150, bbox_inches="tight")
+plt.show()
+```
+
+Use lowercase snake_case filenames that describe the plot content (e.g. `gemcitabine_ln_ic50_distribution.png`).
+
 ## Code Structure
 
 - `notebooks/innitial_EDA.ipynb` — Full EDA: data loading, quality checks, 3-way merge, drug selection (Gemcitabine), and LN_IC50 distribution analysis. Run all cells top-to-bottom; cells depend on prior state.
