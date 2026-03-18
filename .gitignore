@@ -19,7 +19,8 @@ env/
 *.ipynb_checkpoints
 
 # ── Claude Code internals ─────────────────────────────────────────────────────
-.claude/
+.claude/settings.local.json
+.claude/memory/
 
 # ── OS / editor ───────────────────────────────────────────────────────────────
 .DS_Store
