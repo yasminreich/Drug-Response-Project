@@ -82,14 +82,45 @@ Use lowercase snake_case filenames that describe the plot content (e.g. `gemcita
 
 ## Code Structure
 
-- `notebooks/innitial_EDA.ipynb` — Full EDA: data loading, quality checks, 3-way merge, drug selection (Gemcitabine), and LN_IC50 distribution analysis. Run all cells top-to-bottom; cells depend on prior state.
-- `src/preprocess_data.py` — Early-stage preprocessing script. Loads and merges all three datasets. **Note:** does not yet apply variance filtering, standardisation, or train/val/test splitting — those are next steps.
+Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse arrays saved by 03 to
+`output/` (gitignored), so they do **not** reload the 518 MB expression matrix.
+
+- `notebooks/innitial_EDA.ipynb` — Full EDA: loading, quality checks, 3-way merge, drug selection (Gemcitabine), LN_IC50 distribution.
+- `notebooks/02_preprocessing.ipynb` — Rebuilds merge, builds feature matrix, lineage encoding, variance filter, Pearson + PCA *exploration* (stops before modelling).
+- `notebooks/03_baselines_comparison.ipynb` — Leak-free comparison harness (5-fold stratified CV): lineage-only baseline, all-genes Ridge, top-N MI, ElasticNetCV, PCA contrast; per-lineage + solid-tumour-only confound analysis. Persists `X`/`y`/folds/genes to `output/`.
+- `notebooks/04_mlp.ipynb` — PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge.
+- `notebooks/05_interpretability.ipynb` — SHAP on the holdout split + biology check (DCK/SLC29A1 ranks vs Pearson).
+- `src/preprocess_data.py` — Early standalone merge script (superseded by the notebooks; kept for reference).
+
+## Methodology Rules (must follow)
+
+- **No leakage:** scaling and feature selection are fit **inside CV folds / on train only**, via
+  `sklearn.pipeline.Pipeline` or manual per-fold fitting. The Pearson/PCA on all 694 rows in
+  notebook 02 is *exploration only* — it must never choose final features.
+- **Stratify by `OncotreeLineage`** (not `TCGA_DESC`, which has nulls); collapse lineages with
+  < 5 cell lines to `"Other"`. Tissue is a confound (blood cancers are distinct + more sensitive),
+  so always compare against the **lineage-only baseline**.
+
+## Results So Far (Gemcitabine, 5-fold stratified CV, pooled OOF R²)
+
+| Model | R² |
+|---|---|
+| Lineage-only (confound baseline) | 0.20 |
+| **ElasticNetCV** (best) | **0.45** |
+| All genes / Top-1000 MI (Ridge) | 0.36 |
+| PCA-50 (Ridge) | 0.33 |
+| MLP (top-1000 genes) | 0.27 |
+
+Genes roughly **double** the tissue-only signal. Solid-tumours-only R² ≈ 0.21 (positive ⇒ not just
+the blood-cancer shortcut). The MLP does **not** beat regularized linear (expected at p≫n, n≈694).
+SHAP top gene is **SLFN11** (known DNA-damage/Gemcitabine sensitivity biomarker); **DCK** ranks
+~279/1000; SLC29A1 is weak in this cohort.
 
 ## Next Steps (Planned)
 
-1. **Feature selection** — remove near-zero-variance genes, apply variance threshold or mutual information filter against Gemcitabine LN_IC50
-2. **Dataset construction** — build `X` (694 × ~19k genes) and `y` (LN_IC50), stratified train/val/test split by tissue type (`TCGA_DESC`)
-3. **Modelling** — Ridge regression baseline → MLP with dropout + batch norm → SHAP interpretability (DCK and SLC29A1 expected as top features for Gemcitabine)
+1. **Tune / extend** — hyperparameter search for ElasticNet & MLP; try gene-set (pathway) features.
+2. **Confound modelling** — explicitly residualize lineage, or per-lineage models, to isolate mechanism.
+3. **Robustness** — nested CV for an unbiased estimate; external validation if another cohort is available.
 
 ## Git Workflow
 
