@@ -8,7 +8,24 @@ Predict cancer cell line sensitivity (LN_IC50) to drugs from gene expression dat
 
 ## Environment
 
-**Run in Docker:**
+> **Always use Docker (`drug_response_env`) — never run notebooks or scripts locally with pip/python.**
+
+**Build the image (once, or after changing requirements):**
+```bash
+docker build -t drug_response_env .
+```
+
+**Execute a notebook non-interactively (e.g. to run and save outputs):**
+```bash
+docker run --rm \
+    -v "C:/Users/yasmi/projects/Drug_Response_DL/Drug_Response_Project":/app \
+    drug_response_env \
+    jupyter nbconvert --to notebook --execute --inplace notebooks/<notebook>.ipynb
+```
+
+> **Windows note:** Use the absolute path for `-v` instead of `$(pwd)` to avoid Docker volume mount issues on Windows.
+
+**Open Jupyter in the browser:**
 ```bash
 docker build -t drug_response_env .
 docker run -it --rm \
