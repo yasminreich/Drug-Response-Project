@@ -56,3 +56,43 @@ methodological: the reported R² is now an unbiased estimate, not a max-over-con
 
 **Artifacts:** `output/model_comparison_nested.csv`, `output/nested_hp_choices.csv`,
 `output/nested_cv_comparison.png`.
+
+---
+
+## Phase 2 — Non-linear tree models (RandomForest + XGBoost)
+
+**Date:** 2026-07-23 · **Where:** `notebooks/03_baselines_comparison.ipynb`, Section 9
+(added `xgboost` to `requirements.txt`; Docker image rebuilt)
+
+**Motivation.** Do non-linear models capture drug-response structure the linear models miss? Add
+`RandomForestRegressor` and `XGBRegressor` to the harness, same folds, same representation as
+`Top-1000 MI (Ridge)` (per-fold top-1000 MI genes from Section 3 — leak-free; trees are
+scale-invariant so raw values used). Regularized defaults, **not tuned** (RF: 500 trees,
+`max_features="sqrt"`, `min_samples_leaf=2`; XGB: 600 rounds, `lr=0.03`, `max_depth=3`,
+`subsample=0.8`, `colsample_bytree=0.5`).
+
+**Result (pooled OOF R²):**
+
+| Model | Pooled OOF R² |
+|---|---|
+| ElasticNet (nested, l1 tuned) — best linear | 0.460 |
+| **XGBoost** (top-1000 MI) | **0.384** |
+| All genes (Ridge) | 0.362 |
+| Top-1000 MI (Ridge) | 0.356 |
+| **RandomForest** (top-1000 MI) | **0.316** |
+| Lineage-only baseline | 0.200 |
+
+**Takeaway.** **Neither tree beats the best linear model** (best tree 0.384 vs ElasticNet 0.460;
+Δ −0.076). Nuance: XGBoost (0.384) is respectable — it edges out *Ridge* on the same top-1000
+features (0.356) and even all-genes Ridge (0.362) — but it can't match ElasticNet's L1/L2 selection
+across all ~16.8k genes. RandomForest (0.316) lands near the bottom, barely above the tissue-only
+baseline, and XGBoost's per-fold R² is the most unstable in the table (std 0.11 vs ~0.05 for linear).
+
+**Why, in plain terms (p ≫ n).** With ~16.8k mostly-noisy genes and only 694 samples, the gene→IC50
+signal is spread thinly across many weakly-predictive genes — a smooth, near-additive structure that
+penalized linear models exploit efficiently. Greedy, axis-aligned tree splits instead commit hard to
+a few features and overfit sparse data; boosting recovers some of that (hence XGBoost > RF > single
+Ridge subset), but not enough to overtake regularized linear. Consistent with the MLP result: at this
+sample size, added model flexibility doesn't pay.
+
+**Artifacts:** `output/model_comparison_full.csv`, `output/model_comparison_trees.png`.

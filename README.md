@@ -58,9 +58,11 @@ Pooled out-of-fold R² (5-fold stratified CV, n = 694). Higher is better.
 |---|---|
 | **ElasticNet (l1_ratio tuned, nested CV)** — best | **0.46** |
 | ElasticNetCV (l1_ratio = 0.5) | 0.45 |
+| XGBoost (top-1000 MI) | 0.38 |
 | All genes (Ridge) | 0.36 |
 | Top-K MI → Ridge (nested CV) | 0.35 |
 | PCA-50 → Ridge | 0.33 |
+| RandomForest (top-1000 MI) | 0.32 |
 | MLP (top-1000 genes) | 0.27 |
 | Lineage-only (confound baseline) | 0.20 |
 
@@ -80,6 +82,11 @@ models, which is expected at p ≫ n with n ≈ 694:
 - **A neural network (MLP) underperformed** (R² 0.27) vs. regularized linear (~0.46). With ~19k
   features and ~694 samples, there isn't enough data for a deep model to win — regularized linear is
   the right tool here.
+- **Tree ensembles didn't beat linear either.** XGBoost (0.38) was respectable — it edged out Ridge
+  on the same features — but couldn't match ElasticNet's L1/L2 selection across all genes;
+  RandomForest (0.32) landed near the tissue-only baseline. At p ≫ n, signal is spread thinly across
+  many weak genes (a near-additive structure linear models exploit), while greedy tree splits chase a
+  few features and overfit. Same lesson as the MLP: extra flexibility doesn't pay at n ≈ 694.
 - **PCA-50 → Ridge (0.33) lost to keeping the genes** (all-genes Ridge 0.36; ElasticNet 0.46).
   Compressing to 50 components discards useful signal *and* the gene-level interpretability.
 - **The number of selected genes (top-K MI) barely matters.** Nested CV picked K inconsistently
@@ -105,7 +112,8 @@ Plots and intermediate arrays are written to `output/` (gitignored).
 
 ## Roadmap
 
-- **Phase 2** — non-linear tree models (RandomForest, XGBoost) in the same harness.
+- ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ done
+- ~~**Phase 2** — non-linear tree models (RandomForest, XGBoost) in the same harness.~~ ✅ done
 - **Phase 3** — a deeper neural approach: unsupervised autoencoder on the full expression matrix,
   then a regressor on the learned embedding; optionally multi-task across several drugs.
 - **Phase 4** — finalize documentation.
