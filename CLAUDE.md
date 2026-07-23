@@ -15,6 +15,11 @@ Predict cancer cell line sensitivity (LN_IC50) to drugs from gene expression dat
 docker build -t drug_response_env .
 ```
 
+> **Daemon must be running.** If `docker` fails with a pipe/daemon error, start Docker Desktop first:
+> `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, then poll `docker info` until
+> ready (~1 min). On Git-Bash, prefix docker commands with `MSYS_NO_PATHCONV=1` so `/app` args aren't
+> rewritten to Windows paths. `requirements.txt` includes `xgboost` — rebuild the image after editing it.
+
 **Execute a notebook non-interactively (e.g. to run and save outputs):**
 ```bash
 docker run --rm \
@@ -87,10 +92,15 @@ Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse array
 
 - `notebooks/innitial_EDA.ipynb` — Full EDA: loading, quality checks, 3-way merge, drug selection (Gemcitabine), LN_IC50 distribution.
 - `notebooks/02_preprocessing.ipynb` — Rebuilds merge, builds feature matrix, lineage encoding, variance filter, Pearson + PCA *exploration* (stops before modelling).
-- `notebooks/03_baselines_comparison.ipynb` — Leak-free comparison harness (5-fold stratified CV): lineage-only baseline, all-genes Ridge, top-N MI, ElasticNetCV, PCA contrast; per-lineage + solid-tumour-only confound analysis. Persists `X`/`y`/folds/genes to `output/`.
+- `notebooks/03_baselines_comparison.ipynb` — Leak-free comparison harness (5-fold stratified CV). Sections 0–7: lineage-only baseline, all-genes Ridge, top-N MI, ElasticNetCV, PCA contrast; per-lineage + solid-tumour-only confound analysis; persists `X`/`y`/folds/genes to `output/`. **Section 8 (Phase 1):** nested CV for unbiased hyperparameter selection (K, ElasticNet l1_ratio/alpha). **Section 9 (Phase 2):** RandomForest + XGBoost on the top-1000 MI representation, same folds.
 - `notebooks/04_mlp.ipynb` — PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge.
 - `notebooks/05_interpretability.ipynb` — SHAP on the holdout split + biology check (DCK/SLC29A1 ranks vs Pearson).
 - `src/preprocess_data.py` — Early standalone merge script (superseded by the notebooks; kept for reference).
+- `README.md` — Human-facing project overview (goal, data, pipeline, results, what-didn't-work).
+- `EXPERIMENTS.md` — Running log of each modelling attempt; **append a new entry per phase** (do not write it retroactively).
+
+> **Notebooks are hand-maintained `.ipynb` JSON** — there are no builder scripts. Edit them directly
+> (NotebookEdit tool), then execute in Docker with `nbconvert --execute --inplace`.
 
 ## Methodology Rules (must follow)
 
@@ -106,21 +116,38 @@ Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse array
 | Model | R² |
 |---|---|
 | Lineage-only (confound baseline) | 0.20 |
-| **ElasticNetCV** (best) | **0.45** |
+| **ElasticNet (nested, l1 tuned)** (best) | **0.46** |
+| ElasticNetCV (l1=0.5) | 0.45 |
+| XGBoost (top-1000 MI) | 0.38 |
 | All genes / Top-1000 MI (Ridge) | 0.36 |
+| Top-K MI → Ridge (nested) | 0.35 |
 | PCA-50 (Ridge) | 0.33 |
+| RandomForest (top-1000 MI) | 0.32 |
 | MLP (top-1000 genes) | 0.27 |
 
 Genes roughly **double** the tissue-only signal. Solid-tumours-only R² ≈ 0.21 (positive ⇒ not just
-the blood-cancer shortcut). The MLP does **not** beat regularized linear (expected at p≫n, n≈694).
-SHAP top gene is **SLFN11** (known DNA-damage/Gemcitabine sensitivity biomarker); **DCK** ranks
-~279/1000; SLC29A1 is weak in this cohort.
+the blood-cancer shortcut). SHAP top gene is **SLFN11** (known DNA-damage/Gemcitabine sensitivity
+biomarker); **DCK** ranks ~279/1000; SLC29A1 is weak in this cohort.
 
-## Next Steps (Planned)
+**Nothing beats regularized linear at p≫n, n≈694** (expected): the MLP (0.27), RandomForest (0.32),
+and XGBoost (0.38) all trail ElasticNet (0.46). XGBoost edges out Ridge on the same features but not
+ElasticNet's L1/L2 selection over all genes. **Phase 1** confirmed the earlier R² numbers were only
+mildly optimistic — nested CV shifts them < 0.02, and ElasticNet prefers a near-Lasso `l1_ratio`
+(0.9–1.0), not the originally hardcoded 0.5. See `EXPERIMENTS.md` for the full per-phase log.
 
-1. **Tune / extend** — hyperparameter search for ElasticNet & MLP; try gene-set (pathway) features.
-2. **Confound modelling** — explicitly residualize lineage, or per-lineage models, to isolate mechanism.
-3. **Robustness** — nested CV for an unbiased estimate; external validation if another cohort is available.
+## Extension Plan (4 phases, one at a time — confirm results with the user before starting the next)
+
+- ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ done (notebook 03, Section 8)
+- ~~**Phase 2** — RandomForest + XGBoost in the harness.~~ ✅ done (notebook 03, Section 9)
+- **Phase 3 (next)** — deeper neural approach: unsupervised **autoencoder on the full expression
+  matrix** (all available profiles, not just the labelled 694) → train a regressor on the learned
+  embedding, compare to top-K MI + Ridge. If time allows, a **multi-task** MLP predicting several
+  GDSC2 drugs at once (shared hidden layers, per-drug head) to test whether sharing representation
+  helps the small-n problem. Be honest if none of this beats ElasticNet — that's a valid finding.
+- **Phase 4** — finalize documentation (README already drafted; keep `EXPERIMENTS.md` current).
+
+After each phase: append an `EXPERIMENTS.md` entry, update `README.md`, commit + push, and pause for
+user confirmation.
 
 ## Git Workflow
 
