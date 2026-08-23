@@ -95,9 +95,20 @@ Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse array
 - `notebooks/03_baselines_comparison.ipynb` — Leak-free comparison harness (5-fold stratified CV). Sections 0–7: lineage-only baseline, all-genes Ridge, top-N MI, ElasticNetCV, PCA contrast; per-lineage + solid-tumour-only confound analysis; persists `X`/`y`/folds/genes to `output/`. **Section 8 (Phase 1):** nested CV for unbiased hyperparameter selection (K, ElasticNet l1_ratio/alpha). **Section 9 (Phase 2):** RandomForest + XGBoost on the top-1000 MI representation, same folds.
 - `notebooks/04_mlp.ipynb` — PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge.
 - `notebooks/05_interpretability.ipynb` — SHAP on the holdout split + biology check (DCK/SLC29A1 ranks vs Pearson).
-- `src/preprocess_data.py` — Early standalone merge script (superseded by the notebooks; kept for reference).
+- `src/data.py` — **Single source of truth for the 3-way merge**, dedup, variance filter, lineage
+  collapsing and the stratified fold/holdout builders. Notebooks 02 and 03 import from here
+  rather than each keeping their own copy. Replaces the old `preprocess_data.py`, which
+  skipped both mandatory rules below and would have produced a different, wrong dataset.
+- `tests/` — pytest suite covering the dedup rule, the `IsDefaultEntryForModel` filter, the
+  no-leakage contract, and split determinism/stratification. Runs without the 518 MB matrix
+  (synthetic expression fixture joined to the real tracked `Model.csv`/GDSC2 CSV).
+- `.github/workflows/ci.yml` — CI: runs the tests and verifies the Docker image builds.
 - `README.md` — Human-facing project overview (goal, data, pipeline, results, what-didn't-work).
 - `EXPERIMENTS.md` — Running log of each modelling attempt; **append a new entry per phase** (do not write it retroactively).
+
+> **Notebooks import shared logic from `src/data.py`.** Because they execute with
+> `cwd=notebooks/`, they prepend the repo root to `sys.path` before importing. Never
+> re-inline the merge in a notebook — change `src/data.py` and re-run.
 
 > **Notebooks are hand-maintained `.ipynb` JSON** — there are no builder scripts. Edit them directly
 > (NotebookEdit tool), then execute in Docker with `nbconvert --execute --inplace`.
