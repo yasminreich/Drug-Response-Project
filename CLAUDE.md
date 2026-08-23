@@ -95,6 +95,9 @@ Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse array
 - `notebooks/03_baselines_comparison.ipynb` — Leak-free comparison harness (5-fold stratified CV). Sections 0–7: lineage-only baseline, all-genes Ridge, top-N MI, ElasticNetCV, PCA contrast; per-lineage + solid-tumour-only confound analysis; persists `X`/`y`/folds/genes to `output/`. **Section 8 (Phase 1):** nested CV for unbiased hyperparameter selection (K, ElasticNet l1_ratio/alpha). **Section 9 (Phase 2):** RandomForest + XGBoost on the top-1000 MI representation, same folds.
 - `notebooks/04_mlp.ipynb` — PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge.
 - `notebooks/05_interpretability.ipynb` — SHAP on the holdout split + biology check (DCK/SLC29A1 ranks vs Pearson).
+- `notebooks/06_autoencoder.ipynb` — **Phase 3:** denoising autoencoder over all 1,699 expression
+  profiles (one AE per fold, leak-free) → Ridge on the 64-d embedding, plus a transductive contrast;
+  multi-task MLP across the 12 best-covered drugs vs a single-task control. Same folds as 03.
 - `src/data.py` — **Single source of truth for the 3-way merge**, dedup, variance filter, lineage
   collapsing and the stratified fold/holdout builders. Notebooks 02 and 03 import from here
   rather than each keeping their own copy. Replaces the old `preprocess_data.py`, which
@@ -134,14 +137,17 @@ Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse array
 | Top-K MI → Ridge (nested) | 0.35 |
 | PCA-50 (Ridge) | 0.33 |
 | RandomForest (top-1000 MI) | 0.32 |
+| Autoencoder-64 → Ridge (Phase 3) | 0.30 |
 | MLP (top-1000 genes) | 0.27 |
+| Multi-task MLP, 12 drugs (Phase 3) | 0.29 |
 
 Genes roughly **double** the tissue-only signal. Solid-tumours-only R² ≈ 0.21 (positive ⇒ not just
 the blood-cancer shortcut). SHAP top gene is **SLFN11** (known DNA-damage/Gemcitabine sensitivity
 biomarker); **DCK** ranks ~279/1000; SLC29A1 is weak in this cohort.
 
 **Nothing beats regularized linear at p≫n, n≈694** (expected): the MLP (0.27), RandomForest (0.32),
-and XGBoost (0.38) all trail ElasticNet (0.46). XGBoost edges out Ridge on the same features but not
+XGBoost (0.38), the autoencoder embedding (0.30) and the multi-task MLP (0.29) all trail
+ElasticNet (0.46). XGBoost edges out Ridge on the same features but not
 ElasticNet's L1/L2 selection over all genes. **Phase 1** confirmed the earlier R² numbers were only
 mildly optimistic — nested CV shifts them < 0.02, and ElasticNet prefers a near-Lasso `l1_ratio`
 (0.9–1.0), not the originally hardcoded 0.5. See `EXPERIMENTS.md` for the full per-phase log.
@@ -150,12 +156,11 @@ mildly optimistic — nested CV shifts them < 0.02, and ElasticNet prefers a nea
 
 - ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ done (notebook 03, Section 8)
 - ~~**Phase 2** — RandomForest + XGBoost in the harness.~~ ✅ done (notebook 03, Section 9)
-- **Phase 3 (next)** — deeper neural approach: unsupervised **autoencoder on the full expression
-  matrix** (all available profiles, not just the labelled 694) → train a regressor on the learned
-  embedding, compare to top-K MI + Ridge. If time allows, a **multi-task** MLP predicting several
-  GDSC2 drugs at once (shared hidden layers, per-drug head) to test whether sharing representation
-  helps the small-n problem. Be honest if none of this beats ElasticNet — that's a valid finding.
-- **Phase 4** — finalize documentation (README already drafted; keep `EXPERIMENTS.md` current).
+- ~~**Phase 3** — autoencoder on the full expression matrix + multi-task MLP.~~ ✅ done (notebook 06).
+  Neither beat ElasticNet: AE-64 → Ridge 0.296 (below even PCA-50's 0.334), multi-task 0.290 vs a
+  0.294 single-task control. The transductive AE gained only +0.005 over the leak-free per-fold
+  protocol, so strict per-fold refitting costs essentially nothing.
+- **Phase 4 (next)** — finalize documentation (README already drafted; keep `EXPERIMENTS.md` current).
 
 After each phase: append an `EXPERIMENTS.md` entry, update `README.md`, commit + push, and pause for
 user confirmation.

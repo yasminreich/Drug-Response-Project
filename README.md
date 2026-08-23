@@ -11,11 +11,12 @@ type, and how much do genes genuinely add on top?**
 
 > `LN_IC50` = log half-maximal inhibitory concentration. **Lower = more sensitive** to the drug.
 
-![Model comparison](docs/assets/model_comparison_trees.png)
+![Model comparison](docs/assets/model_comparison_all.png)
 
-*Pooled out-of-fold R² for every model tried. The red tissue-only baseline is the bar that matters —
-anything near it has learned little that tissue type didn't already say. Regularized linear (blue)
-beats both tree ensembles (orange) at p ≫ n.*
+*Pooled out-of-fold R² for every model across all three phases, on identical folds. The red
+tissue-only baseline is the bar that matters — anything near it has learned little that tissue type
+didn't already say. Regularized linear wins: tree ensembles, an autoencoder embedding and a
+multi-task MLP all trail it at p ≫ n.*
 
 ## Why Gemcitabine
 
@@ -76,6 +77,7 @@ Notebooks run in order; each depends on the previous. Notebooks 03–05 reuse ar
 | `notebooks/03_baselines_comparison.ipynb` | Leak-free 5-fold comparison harness; per-lineage + solid-tumour-only confound checks; **nested CV** (§8); **tree models** (§9) |
 | `notebooks/04_mlp.ipynb` | PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge |
 | `notebooks/05_interpretability.ipynb` | SHAP on a holdout split + biology check (known Gemcitabine genes) |
+| `notebooks/06_autoencoder.ipynb` | Autoencoder embeddings on all 1,699 profiles + multi-task MLP across 12 drugs |
 
 ## Results
 
@@ -90,7 +92,9 @@ Pooled out-of-fold R² (5-fold stratified CV, n = 694). Higher is better.
 | Top-K MI → Ridge (nested CV) | 0.35 |
 | PCA-50 → Ridge | 0.33 |
 | RandomForest (top-1000 MI) | 0.32 |
-| MLP (top-1000 genes) | 0.27 |
+| Autoencoder-64 → Ridge | 0.30 |
+| MLP (top-1000 genes) | 0.27–0.29 |
+| Multi-task MLP (12 drugs) | 0.29 |
 | Lineage-only (confound baseline) | 0.20 |
 
 **Headline findings:**
@@ -125,9 +129,28 @@ models, which is expected at p ≫ n with n ≈ 694:
   Compressing to 50 components discards useful signal *and* the gene-level interpretability.
 - **The number of selected genes (top-K MI) barely matters.** Nested CV picked K inconsistently
   across folds (500–2000) with near-identical scores — the selection is not the lever.
+- **Unsupervised pretraining didn't pay, and lost to PCA.** An autoencoder trained on all 1,699
+  expression profiles — **2.45× more data than we have labels for** — then regressed on its 64-d
+  embedding reached only 0.30, *below* linear PCA-50 → Ridge (0.33). Compression is the problem, not
+  its flexibility: reconstructing expression optimises for the high-variance tissue axes, not the
+  thin drug-response signal that ElasticNet finds by selecting individual genes. Extra unlabelled
+  data can't fix a mismatched objective.
+- **Letting the autoencoder see test-fold expression was worth +0.005 R².** The transductive shortcut
+  buys almost nothing here, so the strict per-fold protocol costs essentially no accuracy — cheap
+  rigor worth having.
+- **Multi-task learning across 12 drugs didn't help** (0.290 vs 0.294 for its own single-task
+  control). And this was the *favourable* case: all 12 drugs were tested on all 694 cell lines, so
+  there was no missing-data sparsity to overcome. At n ≈ 694 the shared trunk isn't short of tasks,
+  it's short of samples — and multi-tasking doesn't create any.
 - **Nested CV barely moved the numbers** (< 0.02 R² in both directions) — the earlier estimates were
   only mildly optimistic. Its value was methodological rigor, not a better score. ElasticNet prefers
   a near-**Lasso** `l1_ratio` (0.9–1.0), not the originally hardcoded 0.5.
+
+**The pattern across all three phases is consistent.** Nested CV (Phase 1), tree ensembles
+(Phase 2) and deep representation learning (Phase 3) each failed to beat a regularized linear model.
+At p ≫ n with n = 694 and signal spread thinly across many weakly-predictive genes, ElasticNet's
+L1/L2 selection over all ~16.8k genes remains the right tool — every added layer of flexibility cost
+accuracy. That is the finding, not a failure to find one.
 
 See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt, result, and takeaway.
 
@@ -135,7 +158,7 @@ See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt,
 
 ```
 ├── data/                   # GDSC2 + Model.csv tracked; expression matrix gitignored
-├── notebooks/              # 01–05, run in order, committed with their outputs
+├── notebooks/              # 01–06, run in order, committed with their outputs
 ├── src/data.py             # single source of truth: merge, dedup, filter, splits
 ├── tests/                  # pytest: dedup rule, default-entry filter, leakage, splits
 ├── output/                 # generated arrays + figures (gitignored)
@@ -199,6 +222,6 @@ to their own terms of use.
 
 - ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ done
 - ~~**Phase 2** — non-linear tree models (RandomForest, XGBoost) in the same harness.~~ ✅ done
-- **Phase 3** — a deeper neural approach: unsupervised autoencoder on the full expression matrix,
-  then a regressor on the learned embedding; optionally multi-task across several drugs.
+- ~~**Phase 3** — autoencoder on the full expression matrix + multi-task MLP.~~ ✅ done — neither
+  beat ElasticNet; see the negative results above.
 - **Phase 4** — finalize documentation.

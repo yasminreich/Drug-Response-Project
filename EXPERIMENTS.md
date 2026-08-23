@@ -96,3 +96,78 @@ Ridge subset), but not enough to overtake regularized linear. Consistent with th
 sample size, added model flexibility doesn't pay.
 
 **Artifacts:** `output/model_comparison_full.csv`, `output/model_comparison_trees.png`.
+
+---
+
+## Phase 3 — Deep representations: autoencoder embeddings & multi-task learning
+
+**Date:** 2026-08-23 · **Where:** `notebooks/06_autoencoder.ipynb`
+
+**Motivation.** Every model so far only saw the **694 labelled** cell lines. The DepMap expression
+matrix holds **1,699** default profiles — **2.45x more** than we have Gemcitabine labels. Two ways to
+buy signal that don't require new labels:
+1. **Unsupervised pretraining** — learn a representation from all 1,699 profiles, regress on the
+   embedding.
+2. **Multi-task learning** — predict several drugs at once and let a shared trunk pool the signal.
+
+**What was tried.** Same 5 folds as notebook 03 throughout, so numbers are directly comparable.
+
+- **Denoising autoencoder** over all 16,820 variance-filtered genes
+  (16,820 -> 512 -> 128 -> **64** -> 128 -> 512 -> 16,820), input dropout 0.1, Adam (lr 2e-3,
+  wd 1e-5), batch 256, <=100 epochs with early stopping on a 10% *reconstruction* holdout (never on
+  `y`). Then `RidgeCV` on the 64-d embedding.
+  **Leakage protocol:** the 1,005 unlabelled profiles are in no test fold, so they are always safe;
+  labelled cell lines are restricted to the fold's training rows, so **one autoencoder is trained
+  per fold** (1,560 rows each).
+- **Transductive variant** — a single autoencoder over all 1,699 profiles, including test-fold
+  *expression* (never their `y`). Reported separately to price that weaker assumption.
+- **Multi-task MLP** — shared trunk (1000 -> 256 -> 64, BatchNorm + Dropout 0.3) with one linear head
+  per drug over the **12 best-covered GDSC2 drugs**, masked MSE, on the per-fold top-1000 MI genes
+  (selected on training rows only). A **single-task control** runs the identical code path with the
+  Gemcitabine head alone, so the comparison isolates multi-tasking rather than architecture.
+
+**Result (pooled OOF R²):**
+
+| Model | Pooled OOF R² |
+|---|---|
+| ElasticNet (nested, l1 tuned) — best overall | 0.460 |
+| PCA-50 -> Ridge (linear compression, for contrast) | 0.334 |
+| **AE-64 -> Ridge (transductive)** | **0.301** |
+| **AE-64 -> Ridge (leak-free, per-fold AE)** | **0.296** |
+| **Single-task MLP (control)** | **0.294** |
+| **Multi-task MLP (12 drugs)** | **0.290** |
+| Lineage-only baseline | 0.200 |
+
+Per-fold AE R²: 0.287 / 0.307 / 0.260 / 0.244 / 0.373 (mean 0.294 +/- 0.045); autoencoders stopped
+at 65-88 epochs with validation reconstruction MSE ~0.49-0.50.
+
+**Takeaway — neither idea worked, and the *way* they failed is informative.**
+
+1. **Unsupervised pretraining did not pay.** AE-64 (0.296) lands far below ElasticNet (0.460) and,
+   more tellingly, **below PCA-50 (0.334)** — a *linear* 50-component compression beats a *non-linear*
+   64-dimensional one on the same genes. Compression itself is the problem, not its flexibility:
+   squeezing ~16.8k genes into tens of dimensions optimises for **reconstruction**, which is
+   dominated by the high-variance tissue/lineage axes, not for the thin drug-response signal
+   ElasticNet finds by selecting individual genes. The extra 1,005 unlabelled profiles do not fix
+   this, because the bottleneck was never sample size for *representation* learning — it was that the
+   objective is the wrong one.
+2. **Transduction is worth almost nothing here: +0.005 R².** Letting the autoencoder see test-fold
+   expression barely moves the result, which means the conservative per-fold protocol costs us
+   essentially no performance. Cheap rigor — worth stating, because papers often take the
+   transductive shortcut and imply it matters.
+3. **Multi-task learning did not help: −0.004 vs. its own single-task control.** Note the 12 selected
+   drugs were tested on **all 694** cell lines (a 100%-dense target matrix), so this was the
+   *favourable* case — no missing-data sparsity to overcome — and sharing a trunk still gave nothing.
+   Per-fold it was also less stable than the control (fold 3: 0.154 vs 0.233). With n = 694 the trunk
+   has no shortage of *tasks*; it has a shortage of *samples*, and multi-tasking doesn't create any.
+4. **A consistency check that passed:** the single-task MLP control (0.294) closely reproduces
+   notebook 04's independently-implemented MLP (0.27) on the same folds and features.
+
+**The Phase 1-3 pattern is now unambiguous.** Nested CV (Phase 1), tree ensembles (Phase 2), and deep
+representation learning (Phase 3) have each failed to beat a regularized linear model. At p >> n with
+n = 694 and signal spread thinly across many weakly-predictive genes, **ElasticNet's L1/L2 selection
+over all ~16.8k genes remains the right tool**, and every added layer of flexibility has cost
+accuracy. That is the finding, not a failure to find one.
+
+**Artifacts:** `output/model_comparison_phase3.csv`, `output/phase3_results.csv`,
+`output/phase3_ae_folds.csv`, `output/phase3_comparison.png`, `output/phase3_training_curves.png`.
