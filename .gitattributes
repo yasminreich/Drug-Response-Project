@@ -1,0 +1,8 @@
+# Notebooks are committed WITH outputs so results render on GitHub, but the
+# embedded base64 PNGs make textual diffs unreadable. `-diff` collapses them to
+# "Binary files differ" without hiding them from GitHub's language stats
+# (linguist-generated would erase the Jupyter Notebook bar we want to show).
+*.ipynb -diff
+
+# Bundled source data shouldn't skew language statistics.
+data/*.csv linguist-vendored

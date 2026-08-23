@@ -49,7 +49,7 @@ All data files live in `data/`. The large expression matrix is gitignored and mu
 |---|---|---|
 | `GDSC2_fitted_dose_response_27Oct23.csv` | 35 MB | tracked in git |
 | `Model.csv` | 684 KB | tracked in git |
-| `GDSC2_fitted_dose_response_27Oct23.xlsx` | 21 MB | tracked in git |
+| `GDSC2_fitted_dose_response_27Oct23.xlsx` | 21 MB | **gitignored** — redundant duplicate of the `.csv`; nothing reads it |
 | `OmicsExpressionTPMLogp1HumanProteinCodingGenes.csv` | 518 MB | **gitignored** — download from DepMap |
 
 ## Architecture & Data Pipeline
@@ -90,7 +90,7 @@ Use lowercase snake_case filenames that describe the plot content (e.g. `gemcita
 Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse arrays saved by 03 to
 `output/` (gitignored), so they do **not** reload the 518 MB expression matrix.
 
-- `notebooks/innitial_EDA.ipynb` — Full EDA: loading, quality checks, 3-way merge, drug selection (Gemcitabine), LN_IC50 distribution.
+- `notebooks/01_initial_EDA.ipynb` — Full EDA: loading, quality checks, 3-way merge, drug selection (Gemcitabine), LN_IC50 distribution.
 - `notebooks/02_preprocessing.ipynb` — Rebuilds merge, builds feature matrix, lineage encoding, variance filter, Pearson + PCA *exploration* (stops before modelling).
 - `notebooks/03_baselines_comparison.ipynb` — Leak-free comparison harness (5-fold stratified CV). Sections 0–7: lineage-only baseline, all-genes Ridge, top-N MI, ElasticNetCV, PCA contrast; per-lineage + solid-tumour-only confound analysis; persists `X`/`y`/folds/genes to `output/`. **Section 8 (Phase 1):** nested CV for unbiased hyperparameter selection (K, ElasticNet l1_ratio/alpha). **Section 9 (Phase 2):** RandomForest + XGBoost on the top-1000 MI representation, same folds.
 - `notebooks/04_mlp.ipynb` — PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge.

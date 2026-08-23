@@ -1,5 +1,9 @@
 # ── Large data files (too big for GitHub) ────────────────────────────────────
 data/OmicsExpressionTPMLogp1HumanProteinCodingGenes.csv
+# Redundant .xlsx duplicate of the tracked GDSC2 .csv (nothing reads it)
+data/*.xlsx
+# Output of src/preprocess_data.py, if ever run from the repo root
+data/processed_summary.csv
 
 # ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/

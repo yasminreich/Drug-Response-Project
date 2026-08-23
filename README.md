@@ -44,7 +44,7 @@ Notebooks run in order; each depends on the previous. Notebooks 03–05 reuse ar
 
 | Notebook | What it does |
 |---|---|
-| `notebooks/innitial_EDA.ipynb` | Loading, quality checks, 3-way merge, drug selection, `LN_IC50` distribution |
+| `notebooks/01_initial_EDA.ipynb` | Loading, quality checks, 3-way merge, drug selection, `LN_IC50` distribution |
 | `notebooks/02_preprocessing.ipynb` | Rebuild merge, feature matrix, lineage encoding, variance filter, Pearson/PCA *exploration* |
 | `notebooks/03_baselines_comparison.ipynb` | Leak-free 5-fold comparison harness; per-lineage + solid-tumour-only confound checks; **nested CV** (Section 8) |
 | `notebooks/04_mlp.ipynb` | PyTorch MLP (BatchNorm + Dropout) on the best representation, same folds, vs Ridge |

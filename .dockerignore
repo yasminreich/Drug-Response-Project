@@ -1,1 +1,7 @@
+# Build context excludes — keeps the image small and reproducible.
+# Data is mounted at runtime via -v, never baked into the image.
 data/
+output/
+.git/
+.claude/
+**/.ipynb_checkpoints/
