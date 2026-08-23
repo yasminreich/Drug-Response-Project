@@ -188,8 +188,12 @@ This project analyses two public datasets. If you use this work, please cite the
   characterization of the Cancer Cell Line Encyclopedia." *Nature* 569:503–508 (2019).
   [doi:10.1038/s41586-019-1186-3](https://doi.org/10.1038/s41586-019-1186-3)
 
-Machine-readable metadata is in [`CITATION.cff`](CITATION.cff). Code is MIT-licensed
-([`LICENSE`](LICENSE)); the bundled data remains under its original terms.
+Machine-readable metadata is in [`CITATION.cff`](CITATION.cff).
+
+**Licensing.** The code in this repository is MIT-licensed ([`LICENSE`](LICENSE)). That licence
+covers the code only — the datasets bundled in `data/` are redistributed from
+[GDSC](https://www.cancerrxgene.org/) and [DepMap](https://depmap.org/portal/) and remain subject
+to their own terms of use.
 
 ## Roadmap
 
