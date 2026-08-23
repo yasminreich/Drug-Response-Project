@@ -1,0 +1,62 @@
+cff-version: 1.2.0
+title: >-
+  Predicting Cancer Drug Response from Gene Expression:
+  disentangling tissue lineage from gene-level signal
+message: >-
+  If you use this software or its findings, please cite it, and also cite the
+  underlying GDSC2 and DepMap datasets listed under references.
+type: software
+authors:
+  - family-names: Reich
+    given-names: Yasmin
+repository-code: "https://github.com/yasminreich/Drug-Response-Project"
+abstract: >-
+  A leak-free machine-learning pipeline predicting cancer cell-line sensitivity
+  to Gemcitabine (LN_IC50) from gene expression, benchmarked against a
+  tissue-lineage-only baseline to separate genuine gene-level signal from the
+  tissue confound. Compares regularized linear models, tree ensembles and a
+  PyTorch MLP under lineage-stratified cross-validation, with SHAP-based
+  interpretability.
+keywords:
+  - drug response prediction
+  - pharmacogenomics
+  - gene expression
+  - machine learning
+  - GDSC
+  - DepMap
+license: MIT
+references:
+  - type: article
+    title: >-
+      Genomics of Drug Sensitivity in Cancer (GDSC): a resource for therapeutic
+      biomarker discovery in cancer cells
+    authors:
+      - family-names: Yang
+        given-names: Wanjuan
+      - family-names: Soares
+        given-names: Jorge
+      - family-names: Greninger
+        given-names: Patricia
+    journal: Nucleic Acids Research
+    year: 2013
+    volume: "41"
+    doi: 10.1093/nar/gks1111
+    notes: >-
+      Source of GDSC2_fitted_dose_response_27Oct23 (release 27 Oct 2023).
+  - type: article
+    title: >-
+      Next-generation characterization of the Cancer Cell Line Encyclopedia
+    authors:
+      - family-names: Ghandi
+        given-names: Mahmoud
+      - family-names: Huang
+        given-names: Franklin W.
+      - family-names: Jane-Valbuena
+        given-names: Jordi
+    journal: Nature
+    year: 2019
+    volume: "569"
+    doi: 10.1038/s41586-019-1186-3
+    notes: >-
+      Source of the DepMap expression matrix
+      (OmicsExpressionTPMLogp1HumanProteinCodingGenes.csv) and Model.csv.
