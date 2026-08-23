@@ -1,10 +1,16 @@
-pandas
-numpy
-scikit-learn
-xgboost
-torch
-matplotlib
-seaborn
-shap
-jupyter
-ipykernel
+# Pinned to the versions that produced the results in EXPERIMENTS.md / README.md
+# (Python 3.9.25, captured from the drug_response_env image via `pip freeze`).
+# Results are version-sensitive: scikit-learn, xgboost and torch can all shift the
+# reported R2 across releases. Re-pin deliberately, and re-run notebook 03 if you do.
+pandas==2.3.3
+numpy==2.0.2
+scipy==1.13.1
+scikit-learn==1.6.1
+xgboost==2.1.4
+torch==2.8.0
+matplotlib==3.9.4
+seaborn==0.13.2
+shap==0.49.1
+jupyter==1.1.1
+notebook==7.5.7
+ipykernel==6.31.0
