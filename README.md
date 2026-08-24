@@ -96,17 +96,42 @@ Pooled out-of-fold R² (5-fold stratified CV, n = 694). Higher is better.
 | PCA-50 → Ridge | 0.33 |
 | RandomForest (top-1000 MI) | 0.32 |
 | Autoencoder-64 → Ridge | 0.30 |
-| MLP (top-1000 genes) | 0.27–0.29 |
-| Multi-task MLP (12 drugs) | 0.29 |
+| MLP, single-task control (notebook 06) | 0.29 |
+| Multi-task MLP, 12 drugs (notebook 06) | 0.29 |
+| MLP (notebook 04) | 0.27 |
 | Lineage-only (confound baseline) | 0.20 |
 
 **Headline findings:**
 - **Genes roughly double the tissue-only signal** (0.20 → ~0.46). Expression carries real
   predictive information beyond tissue type.
 - **The signal is not just the blood-cancer shortcut** — solid-tumours-only R² stays positive
-  (≈ 0.21).
+  (0.19–0.21), though roughly half the signal goes with the blood cancers. See below.
 - **Biology checks out.** Top SHAP gene is **SLFN11**, a well-known DNA-damage / Gemcitabine
   sensitivity biomarker; **DCK** (the canonical Gemcitabine-activating enzyme) surfaces further down.
+
+### How good is R² = 0.46, really?
+
+Good for this task, with one caveat that matters more than the headline number.
+
+**In its favour:** it more than doubles the tissue-only baseline, Pearson *r* = 0.685 means the model
+orders sensitive vs. resistant lines well, and the top SHAP feature is a genuine, literature-backed
+Gemcitabine biomarker the model was never told about. Pooled and averaged fold R² agree (0.4601 vs
+0.4594 ± 0.05), so no single fold is carrying the result.
+
+**Against it, and worth stating plainly:**
+
+- **Solid tumours only drops to ≈ 0.19–0.21.** Removing blood cancers costs roughly half the signal:
+  all-genes Ridge falls 0.362 → 0.193, top-1000 MI Ridge 0.356 → 0.214. (The check was run on the
+  Ridge representations, not ElasticNet, so it isn't a like-for-like 0.46 → 0.21.) Still positive, so
+  this isn't *purely* the blood-cancer shortcut — but the headline leans substantially on
+  tissue-correlated structure, and within solid tumours the model is close to the tissue baseline.
+- **54% of variance is still unexplained.** RMSE is 2.22 against a target standard deviation of 3.03.
+  Because `LN_IC50` is a natural log, that is roughly a **9-fold error in actual IC50
+  concentration**. The model ranks cell lines usefully; it does not predict a dose.
+- **Gemcitabine was chosen as the highest-variance drug**, so this is a favourable case by
+  construction, not a typical one.
+- **No external validation.** Every number here is internal cross-validation on one dataset.
+  Generalisation to another cell-line panel — let alone to patients — is untested.
 
 ![SHAP top genes](docs/assets/shap_top_genes.png)
 
@@ -233,8 +258,30 @@ to their own terms of use.
 
 ## Roadmap
 
-- ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ done
-- ~~**Phase 2** — non-linear tree models (RandomForest, XGBoost) in the same harness.~~ ✅ done
-- ~~**Phase 3** — autoencoder on the full expression matrix + multi-task MLP.~~ ✅ done — neither
-  beat ElasticNet; see the negative results above.
-- **Phase 4** — finalize documentation.
+All four planned phases are complete; the project is in a finished, reproducible state.
+
+- ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ Moved the numbers < 0.02 R²
+  in both directions, so the earlier estimates were only mildly optimistic. ElasticNet prefers a
+  near-Lasso `l1_ratio` (0.9–1.0), not the originally hardcoded 0.5.
+- ~~**Phase 2** — non-linear tree models (RandomForest, XGBoost) in the same harness.~~ ✅ Neither
+  beat regularized linear. XGBoost (0.38) edged out Ridge on the same features; RandomForest (0.32)
+  landed near the tissue baseline.
+- ~~**Phase 3** — autoencoder on the full expression matrix + multi-task MLP.~~ ✅ Neither beat
+  ElasticNet, and the autoencoder (0.30) lost to *linear* PCA-50 (0.33).
+- ~~**Phase 4** — finalize documentation and engineering.~~ ✅ Shared `src/data.py` imported by every
+  notebook that touches raw data, 37 tests covering the rules that fail silently, CI (lint + tests +
+  Docker build), a full dependency lock, MIT license and citation metadata.
+
+### If this were taken further
+
+The honest next steps, in rough order of value:
+
+1. **External validation.** The single biggest gap — everything here is internal CV on one dataset.
+   Testing the fitted model on an independent panel (e.g. CCLE/PRISM) would say far more than another
+   architecture.
+2. **Run the whole harness across many drugs**, not just Gemcitabine, to see how much of the result is
+   drug-specific. The pipeline already supports it: `src/data.py` takes a `target_drug` argument.
+3. **Predict within tissue.** Given solid-tumours-only R² ≈ 0.21, modelling per-lineage or explicitly
+   residualising tissue out would target the part of the problem that's actually unsolved.
+4. **More signal per sample, not more model capacity.** Three phases of added flexibility all lost to
+   ElasticNet, which points at data — mutations, copy number, methylation — rather than architecture.

@@ -164,7 +164,16 @@ mildly optimistic — nested CV shifts them < 0.02, and ElasticNet prefers a nea
   Neither beat ElasticNet: AE-64 → Ridge 0.296 (below even PCA-50's 0.334), multi-task 0.290 vs a
   0.294 single-task control. The transductive AE gained only +0.005 over the leak-free per-fold
   protocol, so strict per-fold refitting costs essentially nothing.
-- **Phase 4 (next)** — finalize documentation (README already drafted; keep `EXPERIMENTS.md` current).
+- ~~**Phase 4** — finalize documentation and engineering.~~ ✅ done. `src/data.py` is imported by
+  every notebook that touches raw data (01/02/03/06); 37 tests; CI runs lint + tests + Docker build;
+  `requirements.lock` pins the full transitive tree (pinning only direct deps silently broke clean
+  builds); MIT license, `CITATION.cff`, `CONTRIBUTING.md`, `Makefile`/`tasks.ps1`.
+
+**All four phases are complete.** If work resumes, the highest-value directions are external
+validation on an independent panel, running the harness across many drugs (`src/data.py` already
+takes a `target_drug` argument), or modelling within tissue — solid-tumours-only R² ≈ 0.21 is the
+part that's actually unsolved. More model capacity is *not* promising: three phases of it all lost
+to ElasticNet.
 
 After each phase: append an `EXPERIMENTS.md` entry, update `README.md`, commit + push, and pause for
 user confirmation.
