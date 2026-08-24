@@ -174,13 +174,26 @@ models, which is expected at p ≫ n with n ≈ 694:
   only mildly optimistic. Its value was methodological rigor, not a better score. ElasticNet prefers
   a near-**Lasso** `l1_ratio` (0.9–1.0), not the originally hardcoded 0.5.
 
-**The pattern across all three phases is consistent.** Nested CV (Phase 1), tree ensembles
-(Phase 2) and deep representation learning (Phase 3) each failed to beat a regularized linear model.
+**The pattern is consistent.** Unbiased nested tuning, tree ensembles and deep representation
+learning each failed to beat a regularized linear model.
 At p ≫ n with n = 694 and signal spread thinly across many weakly-predictive genes, ElasticNet's
 L1/L2 selection over all ~16.8k genes remains the right tool — every added layer of flexibility cost
 accuracy. That is the finding, not a failure to find one.
 
 See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt, result, and takeaway.
+
+## Where this could go next
+
+Given that three rounds of added model capacity all lost to ElasticNet, the bottleneck looks like
+**data, not architecture**. In rough order of value:
+
+1. **External validation on an independent panel.** The single biggest gap — every number here comes
+   from internal cross-validation on one dataset.
+2. **Run the harness across many drugs**, to see how much of this is Gemcitabine-specific.
+   `src/data.py` already takes a `target_drug` argument.
+3. **Model within tissue.** Solid-tumours-only R² of ~0.20 is the part that is actually unsolved;
+   per-lineage models, or explicitly residualising tissue out, would target it directly.
+4. **Add other data types** — mutations, copy number, methylation — rather than more layers.
 
 ## Repository layout
 
@@ -193,6 +206,7 @@ See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt,
 ├── docs/assets/            # the few figures embedded in this README
 ├── Dockerfile              # the only supported environment
 ├── Makefile                # make test / make notebook NB=03 / make lint
+├── tasks.ps1               # same targets on Windows (no make needed)
 ├── requirements.txt        # direct dependencies (human-readable)
 ├── requirements.lock       # full transitive freeze; what Docker installs
 ├── requirements-dev.txt    # lightweight test-only deps used by CI
@@ -213,24 +227,34 @@ docker build -t drug_response_env .
 ```
 
 Then, with no absolute paths to paste (`make` on macOS/Linux, `tasks.ps1` on Windows, where `make`
-isn't installed by default):
+is not installed by default):
 
 | Task | macOS / Linux | Windows |
 |---|---|---|
-| Run the tests | `make test` | `.	asks.ps1 test` |
-| Lint | `make lint` | `.	asks.ps1 lint` |
-| Execute a notebook | `make notebook NB=03_baselines_comparison` | `.	asks.ps1 notebook -Notebook 03_baselines_comparison` |
-| Jupyter server | `make jupyter` | `.	asks.ps1 jupyter` |
+| Run the tests | `make test` | `.\tasks.ps1 test` |
+| Lint | `make lint` | `.\tasks.ps1 lint` |
+| Execute a notebook | `make notebook NB=03_baselines_comparison` | `.\tasks.ps1 notebook -Notebook 03_baselines_comparison` |
+| Jupyter server | `make jupyter` | `.\tasks.ps1 jupyter` |
 
 The tests need **no** data download — they run against a synthetic expression fixture joined to the
 real tracked ID tables. Executing the notebooks does require the DepMap matrix (see [Data](#data)).
 
-Raw Docker equivalents, if you'd rather not use the wrappers:
+Raw Docker equivalents, if you would rather not use the wrappers:
 
 ```bash
+# run the tests
 docker run --rm -v "$PWD":/app -w /app drug_response_env python -m pytest tests/
-docker run --rm -v "$PWD":/app -w /app drug_response_env     jupyter nbconvert --to notebook --execute --inplace notebooks/03_baselines_comparison.ipynb
+
+# execute a notebook in place
+docker run --rm -v "$PWD":/app -w /app drug_response_env jupyter nbconvert \
+    --to notebook --execute --inplace notebooks/03_baselines_comparison.ipynb
+
+# interactive Jupyter, then open the URL it prints
+docker run -it --rm -v "$PWD":/app -w /app -p 8888:8888 drug_response_env
 ```
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow — the two data rules that must never
+be broken, the notebook re-execution convention, and how to change a dependency safely.
 
 Dependencies are **locked**: `requirements.txt` lists the direct dependencies for humans, while
 `requirements.lock` is the full transitive freeze (148 packages) that Docker actually installs, so a
@@ -255,33 +279,3 @@ Machine-readable metadata is in [`CITATION.cff`](CITATION.cff).
 covers the code only — the datasets bundled in `data/` are redistributed from
 [GDSC](https://www.cancerrxgene.org/) and [DepMap](https://depmap.org/portal/) and remain subject
 to their own terms of use.
-
-## Roadmap
-
-All four planned phases are complete; the project is in a finished, reproducible state.
-
-- ~~**Phase 1** — nested CV for unbiased hyperparameter selection.~~ ✅ Moved the numbers < 0.02 R²
-  in both directions, so the earlier estimates were only mildly optimistic. ElasticNet prefers a
-  near-Lasso `l1_ratio` (0.9–1.0), not the originally hardcoded 0.5.
-- ~~**Phase 2** — non-linear tree models (RandomForest, XGBoost) in the same harness.~~ ✅ Neither
-  beat regularized linear. XGBoost (0.38) edged out Ridge on the same features; RandomForest (0.32)
-  landed near the tissue baseline.
-- ~~**Phase 3** — autoencoder on the full expression matrix + multi-task MLP.~~ ✅ Neither beat
-  ElasticNet, and the autoencoder (0.30) lost to *linear* PCA-50 (0.33).
-- ~~**Phase 4** — finalize documentation and engineering.~~ ✅ Shared `src/data.py` imported by every
-  notebook that touches raw data, 37 tests covering the rules that fail silently, CI (lint + tests +
-  Docker build), a full dependency lock, MIT license and citation metadata.
-
-### If this were taken further
-
-The honest next steps, in rough order of value:
-
-1. **External validation.** The single biggest gap — everything here is internal CV on one dataset.
-   Testing the fitted model on an independent panel (e.g. CCLE/PRISM) would say far more than another
-   architecture.
-2. **Run the whole harness across many drugs**, not just Gemcitabine, to see how much of the result is
-   drug-specific. The pipeline already supports it: `src/data.py` takes a `target_drug` argument.
-3. **Predict within tissue.** Given solid-tumours-only R² ≈ 0.21, modelling per-lineage or explicitly
-   residualising tissue out would target the part of the problem that's actually unsolved.
-4. **More signal per sample, not more model capacity.** Three phases of added flexibility all lost to
-   ElasticNet, which points at data — mutations, copy number, methylation — rather than architecture.
