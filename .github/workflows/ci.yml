@@ -65,7 +65,7 @@ jobs:
       # with the pinned requirements. Build only, never pushed. Layer caching
       # keeps the ~2 GB torch install off the critical path on repeat runs.
       - name: Build drug_response_env
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
