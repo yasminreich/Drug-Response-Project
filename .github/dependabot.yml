@@ -1,14 +1,28 @@
-# Every dependency in this repo is pinned to the versions that produced the
-# published results, so without Dependabot those pins would silently rot.
-# Updates arrive as PRs; re-run notebook 03 before accepting anything that
-# touches scikit-learn, xgboost or torch, since results are version-sensitive.
+# This repo's value proposition is that specific pinned versions produced the
+# published R2 numbers, so routine dependency churn is actively unhelpful:
+# bumping scikit-learn, xgboost or torch invalidates the results table until
+# notebook 03 is re-run.
+#
+# Dependabot also cannot maintain requirements.lock (the full transitive freeze
+# Docker actually installs). A PR that edits requirements.txt alone would leave
+# the lock stale and change nothing about the built image.
+#
+# So: GitHub Actions updates are automated (safe, no effect on results), while
+# pip version updates are switched off. Security advisories still open PRs --
+# open-pull-requests-limit: 0 disables *version* updates only.
+#
+# To update Python dependencies deliberately:
+#   1. edit requirements.txt
+#   2. docker build -t drug_response_env .
+#   3. docker run --rm drug_response_env pip freeze > requirements.lock
+#   4. re-run notebook 03 and check the numbers in EXPERIMENTS.md still hold
 version: 2
 updates:
   - package-ecosystem: pip
     directory: "/"
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 0
     labels: ["dependencies"]
 
   - package-ecosystem: github-actions

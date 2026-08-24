@@ -81,6 +81,24 @@ make lint    # ruff
 
 CI runs both on every push and PR, plus a Docker build to prove the documented commands still work.
 
+## Changing dependencies
+
+`requirements.txt` is the human-readable list of direct dependencies; `requirements.lock` is the
+full transitive freeze that Docker actually installs. Editing one without the other does nothing —
+or worse, silently diverges. The sequence is:
+
+```bash
+# 1. edit requirements.txt
+docker build -t drug_response_env .
+docker run --rm drug_response_env pip freeze > requirements.lock
+make notebook NB=03_baselines_comparison    # 3. confirm EXPERIMENTS.md still holds
+```
+
+Dependabot handles GitHub Actions updates automatically, but **pip version updates are switched
+off** — see the comments in `.github/dependabot.yml`. Security advisories still open PRs. This is
+deliberate: bumping scikit-learn, xgboost or torch invalidates the published results table until
+notebook 03 is re-run, and Dependabot cannot regenerate the lock.
+
 ## Reporting results
 
 Every modelling phase gets an appended entry in [`EXPERIMENTS.md`](EXPERIMENTS.md) — motivation, what
