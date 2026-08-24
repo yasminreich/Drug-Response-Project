@@ -101,35 +101,50 @@ def load_expression(data_dir=None):
     return filter_default_entries(expr_raw)
 
 
-def dedup_drug_rows(gdsc_model, target_drug=TARGET_DRUG):
-    """Filter to one drug and collapse replicate measurements to one row per cell line.
+def join_gdsc_to_models(gdsc, model_clean, expr_final=None):
+    """Join GDSC2 to the Model bridge on ``COSMIC_ID``, across **all** drugs.
 
-    Replicates are averaged. Grouping uses only ``DEDUP_KEYS``; ``TCGA_DESC`` is
+    When ``expr_final`` is given, the result is further restricted to cell lines
+    that have an expression profile. Passing ``None`` gives the intermediate
+    (bridge-only) join, which notebook 01 reports as a separate merge-funnel step.
+    """
+    joined = gdsc.merge(model_clean, on="COSMIC_ID", how="inner")
+
+    if expr_final is not None:
+        expr_ids = set(expr_final["ModelID"].unique())
+        joined = joined[joined["ModelID"].isin(expr_ids)].copy()
+
+    return joined
+
+
+def dedup_rows(df):
+    """Collapse replicate measurements to one row per ``DEDUP_KEYS``, across all drugs.
+
+    GDSC2 can hold several NLME curve fits for the same cell line/drug pair;
+    replicates are averaged. Grouping uses only ``DEDUP_KEYS`` — ``TCGA_DESC`` is
     carried through as an aggregate rather than a key precisely because its NaNs
     would otherwise drop rows.
     """
-    subset = gdsc_model[gdsc_model["DRUG_NAME"] == target_drug].copy()
-
     agg = dict(
         CellLineName=("CellLineName", "first"),
         OncotreeLineage=("OncotreeLineage", "first"),
         TCGA_DESC=("TCGA_DESC", "first"),
         LN_IC50=("LN_IC50", "mean"),
     )
-    if "AUC" in subset.columns:
+    if "AUC" in df.columns:
         agg["AUC"] = ("AUC", "mean")
 
-    return subset.groupby(DEDUP_KEYS, as_index=False).agg(**agg)
+    return df.groupby(DEDUP_KEYS, as_index=False).agg(**agg)
+
+
+def dedup_drug_rows(gdsc_model, target_drug=TARGET_DRUG):
+    """Filter to one drug, then collapse replicates to one row per cell line."""
+    return dedup_rows(gdsc_model[gdsc_model["DRUG_NAME"] == target_drug].copy())
 
 
 def build_merged(gdsc, model_clean, expr_final, target_drug=TARGET_DRUG):
     """Run the two-hop join: GDSC2 -> Model bridge -> expression matrix."""
-    gdsc_model = gdsc.merge(model_clean, on="COSMIC_ID", how="inner")
-
-    # Keep only rows whose cell line has an expression profile.
-    expr_ids = set(expr_final["ModelID"].unique())
-    gdsc_model = gdsc_model[gdsc_model["ModelID"].isin(expr_ids)].copy()
-
+    gdsc_model = join_gdsc_to_models(gdsc, model_clean, expr_final)
     target_df = dedup_drug_rows(gdsc_model, target_drug=target_drug)
     return target_df.merge(expr_final, on="ModelID", how="inner")
 

@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src import data as sdata
 
@@ -91,6 +92,69 @@ class TestDedup:
     def test_filters_to_target_drug_only(self, gdsc_gemcitabine):
         result = sdata.dedup_drug_rows(gdsc_gemcitabine)
         assert set(result["DRUG_NAME"].unique()) == {sdata.TARGET_DRUG}
+
+
+class TestJoinGdscToModels:
+    """The all-drug join shared by notebook 01 and build_merged."""
+
+    def test_without_expression_keeps_all_bridged_rows(self, gdsc, model_bridge):
+        joined = sdata.join_gdsc_to_models(gdsc, model_bridge)
+
+        assert len(joined) > 0
+        assert "ModelID" in joined.columns
+        assert joined["COSMIC_ID"].isin(model_bridge["COSMIC_ID"]).all()
+        # All drugs, not just the target one.
+        assert joined["DRUG_NAME"].nunique() > 1
+
+    def test_expression_restricts_to_profiled_cell_lines(self, gdsc, model_bridge, expr_final):
+        final, _ = expr_final
+
+        unrestricted = sdata.join_gdsc_to_models(gdsc, model_bridge)
+        restricted = sdata.join_gdsc_to_models(gdsc, model_bridge, final)
+
+        assert len(restricted) < len(unrestricted)
+        assert restricted["ModelID"].isin(final["ModelID"]).all()
+        # The synthetic matrix holds 30 models, so at most 30 cell lines survive.
+        assert restricted["ModelID"].nunique() <= 30
+
+    def test_build_merged_matches_the_helper(self, gdsc, model_bridge, expr_final):
+        """build_merged must go through the same join, not its own copy."""
+        final, gene_cols = expr_final
+
+        via_helper = sdata.join_gdsc_to_models(gdsc, model_bridge, final)
+        expected_ids = set(
+            sdata.dedup_drug_rows(via_helper)["ModelID"]
+        )
+        merged = sdata.build_merged(gdsc, model_bridge, final)
+
+        assert set(merged["ModelID"]) == expected_ids
+
+
+class TestDedupRows:
+    def test_all_drug_dedup_keeps_every_drug(self, gdsc_gemcitabine, gdsc, model_bridge):
+        joined = sdata.join_gdsc_to_models(gdsc, model_bridge)
+        result = sdata.dedup_rows(joined)
+
+        assert result["DRUG_NAME"].nunique() == joined["DRUG_NAME"].nunique()
+        # One row per (COSMIC_ID, DRUG_NAME, ModelID).
+        assert result.duplicated(subset=sdata.DEDUP_KEYS).sum() == 0
+
+    def test_averages_auc_when_present(self):
+        df = pd.DataFrame(
+            {
+                "COSMIC_ID": [1, 1],
+                "DRUG_NAME": ["D", "D"],
+                "ModelID": ["ACH-1", "ACH-1"],
+                "CellLineName": ["A", "A"],
+                "OncotreeLineage": ["Lung", "Lung"],
+                "TCGA_DESC": [np.nan, np.nan],
+                "LN_IC50": [1.0, 3.0],
+                "AUC": [0.2, 0.4],
+            }
+        )
+        out = sdata.dedup_rows(df)
+        assert len(out) == 1
+        assert out.loc[0, "AUC"] == pytest.approx(0.3)
 
 
 class TestBuildMerged:
