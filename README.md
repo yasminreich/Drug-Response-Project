@@ -168,7 +168,8 @@ See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt,
 ├── docs/assets/            # the few figures embedded in this README
 ├── Dockerfile              # the only supported environment
 ├── Makefile                # make test / make notebook NB=03 / make lint
-├── requirements.txt        # pinned to the versions that produced the results
+├── requirements.txt        # direct dependencies (human-readable)
+├── requirements.lock       # full transitive freeze; what Docker installs
 ├── requirements-dev.txt    # lightweight test-only deps used by CI
 ├── pyproject.toml          # ruff + pytest configuration (no packaging)
 ├── EXPERIMENTS.md          # per-phase running log
@@ -206,8 +207,10 @@ docker run --rm -v "$PWD":/app -w /app drug_response_env python -m pytest tests/
 docker run --rm -v "$PWD":/app -w /app drug_response_env     jupyter nbconvert --to notebook --execute --inplace notebooks/03_baselines_comparison.ipynb
 ```
 
-Dependencies are **pinned** in `requirements.txt` to the versions that produced the numbers above;
-results are version-sensitive, so re-pin deliberately and re-run notebook 03 if you change them.
+Dependencies are **locked**: `requirements.txt` lists the direct dependencies for humans, while
+`requirements.lock` is the full transitive freeze (148 packages) that Docker actually installs, so a
+clean build reproduces the exact environment behind the numbers above. Results are version-sensitive
+— change `requirements.txt`, regenerate the lock, and re-run notebook 03 before trusting new numbers.
 Plots and intermediate arrays are written to `output/` (gitignored).
 
 ## Data sources & citations

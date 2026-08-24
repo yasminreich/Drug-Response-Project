@@ -6,13 +6,17 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install from the FULL transitive lock, not requirements.txt. Pinning only the
+# direct dependencies left pip free to resolve Jupyter's tree to releases that
+# require Python >= 3.11, which broke clean builds while cached local builds
+# kept passing. See the header of requirements.lock to regenerate it.
+COPY requirements.lock .
+RUN pip install --no-cache-dir -r requirements.lock
 
-# Dev tooling in a separate layer so the expensive torch install above stays
-# cached. Without pytest/ruff in the image, the documented `make test` and
-# `make lint` commands would not actually run.
-COPY requirements-dev.txt .
+# Dev tooling in a separate layer so the expensive install above stays cached.
+# Without pytest/ruff in the image, the documented `make test` and `make lint`
+# commands would not actually run. (requirements-dev.txt is for CI's lightweight
+# test job, which never builds this image.)
 RUN pip install --no-cache-dir pytest==8.3.4 ruff==0.8.6
 
 # Register the Jupyter kernel under the environment name

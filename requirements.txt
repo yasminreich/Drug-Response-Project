@@ -1,7 +1,13 @@
-# Pinned to the versions that produced the results in EXPERIMENTS.md / README.md
-# (Python 3.9.25, captured from the drug_response_env image via `pip freeze`).
+# DIRECT dependencies, for humans. Docker installs requirements.lock instead --
+# the full transitive freeze -- because pinning only these 12 left pip free to
+# resolve Jupyter's dependency tree to Python-3.11-only releases.
+#
+# Change a version here, then regenerate the lock:
+#   docker build -t drug_response_env . && #   docker run --rm drug_response_env pip freeze > requirements.lock
+#
 # Results are version-sensitive: scikit-learn, xgboost and torch can all shift the
 # reported R2 across releases. Re-pin deliberately, and re-run notebook 03 if you do.
+# Python 3.9.25.
 pandas==2.3.3
 numpy==2.0.2
 scipy==1.13.1
