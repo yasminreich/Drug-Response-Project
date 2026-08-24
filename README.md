@@ -58,8 +58,10 @@ cluster, so tissue predicts *both* expression and response. Every gene model is 
 against a **lineage-only baseline**, and re-checked on **solid tumours only** (blood cancers removed).
 
 The merge, deduplication, variance filter and split construction live in one module,
-[`src/data.py`](src/data.py), which the notebooks import — so no two notebooks can drift into
-modelling subtly different datasets. Two rules are enforced there and covered by tests:
+[`src/data.py`](src/data.py). Notebooks 01, 02, 03 and 06 import it rather than each keeping a copy,
+so they cannot drift into modelling subtly different datasets; notebooks 04 and 05 deliberately touch
+no raw data at all, reading only the arrays notebook 03 saves to `output/`. Two rules are enforced in
+that module and covered by tests:
 
 1. The expression matrix is filtered to `IsDefaultEntryForModel == "Yes"` (a **string**, not a
    boolean), so each cell line contributes exactly one profile.
@@ -67,8 +69,9 @@ modelling subtly different datasets. Two rules are enforced there and covered by
    NaNs (`TCGA_DESC`) would silently drop those rows, since `pandas.groupby` defaults to
    `dropna=True`.
 
-Notebooks run in order; each depends on the previous. Notebooks 03–05 reuse arrays saved to
-`output/` so they never reload the 518 MB matrix.
+Notebooks run in order; each depends on the previous. Notebooks 04–06 reuse arrays saved to
+`output/` by notebook 03, so they never reload the 518 MB matrix (06 loads it once more, to reach the
+unlabelled profiles the autoencoder needs).
 
 | Notebook | What it does |
 |---|---|
@@ -164,8 +167,15 @@ See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt,
 ├── output/                 # generated arrays + figures (gitignored)
 ├── docs/assets/            # the few figures embedded in this README
 ├── Dockerfile              # the only supported environment
+├── Makefile                # make test / make notebook NB=03 / make lint
+├── requirements.txt        # pinned to the versions that produced the results
+├── requirements-dev.txt    # lightweight test-only deps used by CI
+├── pyproject.toml          # ruff + pytest configuration (no packaging)
 ├── EXPERIMENTS.md          # per-phase running log
-└── .github/workflows/ci.yml
+├── CONTRIBUTING.md         # Docker-only workflow, tests, notebook conventions
+├── CITATION.cff            # machine-readable citation metadata
+├── LICENSE                 # MIT
+└── .github/                # ci.yml + dependabot.yml
 ```
 
 ## Reproducing
@@ -173,27 +183,27 @@ See [`EXPERIMENTS.md`](EXPERIMENTS.md) for the full running log of each attempt,
 All work runs inside Docker (`drug_response_env`) — never locally with pip.
 
 ```bash
-# 1. Build the image
 docker build -t drug_response_env .
-
-# 2. Download the DepMap expression matrix into data/ (see Data above)
-
-# 3. Execute a notebook in place
-docker run --rm -v "<absolute-repo-path>":/app drug_response_env \
-    jupyter nbconvert --to notebook --execute --inplace notebooks/03_baselines_comparison.ipynb
 ```
 
-Run the tests — no expression matrix needed, they use a synthetic fixture joined to the real
-tracked ID tables:
+Then, with no absolute paths to paste (`make` on macOS/Linux, `tasks.ps1` on Windows, where `make`
+isn't installed by default):
+
+| Task | macOS / Linux | Windows |
+|---|---|---|
+| Run the tests | `make test` | `.	asks.ps1 test` |
+| Lint | `make lint` | `.	asks.ps1 lint` |
+| Execute a notebook | `make notebook NB=03_baselines_comparison` | `.	asks.ps1 notebook -Notebook 03_baselines_comparison` |
+| Jupyter server | `make jupyter` | `.	asks.ps1 jupyter` |
+
+The tests need **no** data download — they run against a synthetic expression fixture joined to the
+real tracked ID tables. Executing the notebooks does require the DepMap matrix (see [Data](#data)).
+
+Raw Docker equivalents, if you'd rather not use the wrappers:
 
 ```bash
-docker run --rm -v "<absolute-repo-path>":/app -w /app drug_response_env pytest tests/ -q
-```
-
-To work interactively, start Jupyter and open the URL it prints:
-
-```bash
-docker run -it --rm -v "<absolute-repo-path>":/app -p 8888:8888 drug_response_env
+docker run --rm -v "$PWD":/app -w /app drug_response_env python -m pytest tests/
+docker run --rm -v "$PWD":/app -w /app drug_response_env     jupyter nbconvert --to notebook --execute --inplace notebooks/03_baselines_comparison.ipynb
 ```
 
 Dependencies are **pinned** in `requirements.txt` to the versions that produced the numbers above;

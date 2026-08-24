@@ -10,13 +10,18 @@ authors:
   - family-names: Reich
     given-names: Yasmin
 repository-code: "https://github.com/yasminreich/Drug-Response-Project"
+version: "1.0.0"
+date-released: "2026-08-24"
 abstract: >-
   A leak-free machine-learning pipeline predicting cancer cell-line sensitivity
   to Gemcitabine (LN_IC50) from gene expression, benchmarked against a
   tissue-lineage-only baseline to separate genuine gene-level signal from the
-  tissue confound. Compares regularized linear models, tree ensembles and a
-  PyTorch MLP under lineage-stratified cross-validation, with SHAP-based
-  interpretability.
+  tissue confound. Compares regularized linear models, tree ensembles, a PyTorch
+  MLP, unsupervised autoencoder embeddings and a multi-task network under
+  lineage-stratified cross-validation with nested hyperparameter selection, plus
+  SHAP-based interpretability. Reports the negative results as well: at p >> n
+  with n = 694, no non-linear or deep method outperformed regularized linear
+  regression.
 keywords:
   - drug response prediction
   - pharmacogenomics

@@ -1,0 +1,18 @@
+# Every dependency in this repo is pinned to the versions that produced the
+# published results, so without Dependabot those pins would silently rot.
+# Updates arrive as PRs; re-run notebook 03 before accepting anything that
+# touches scikit-learn, xgboost or torch, since results are version-sensitive.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]

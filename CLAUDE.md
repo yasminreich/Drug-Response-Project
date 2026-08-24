@@ -87,8 +87,9 @@ Use lowercase snake_case filenames that describe the plot content (e.g. `gemcita
 
 ## Code Structure
 
-Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse arrays saved by 03 to
-`output/` (gitignored), so they do **not** reload the 518 MB expression matrix.
+Notebooks run in order; each depends on the prior. Notebooks 04–06 reuse arrays saved by 03 to
+`output/` (gitignored), so they do **not** reload the 518 MB expression matrix — except notebook 06,
+which loads it once more to reach the unlabelled profiles its autoencoder needs.
 
 - `notebooks/01_initial_EDA.ipynb` — Full EDA: loading, quality checks, 3-way merge, drug selection (Gemcitabine), LN_IC50 distribution.
 - `notebooks/02_preprocessing.ipynb` — Rebuilds merge, builds feature matrix, lineage encoding, variance filter, Pearson + PCA *exploration* (stops before modelling).
@@ -99,9 +100,12 @@ Notebooks run in order; each depends on the prior. Notebooks 03–05 reuse array
   profiles (one AE per fold, leak-free) → Ridge on the 64-d embedding, plus a transductive contrast;
   multi-task MLP across the 12 best-covered drugs vs a single-task control. Same folds as 03.
 - `src/data.py` — **Single source of truth for the 3-way merge**, dedup, variance filter, lineage
-  collapsing and the stratified fold/holdout builders. Notebooks 02 and 03 import from here
-  rather than each keeping their own copy. Replaces the old `preprocess_data.py`, which
-  skipped both mandatory rules below and would have produced a different, wrong dataset.
+  collapsing and the stratified fold/holdout builders. Notebooks **01, 02, 03 and 06** import from
+  here rather than each keeping their own copy; 04 and 05 touch no raw data, reading only the arrays
+  03 saves to `output/`. Use `join_gdsc_to_models` / `dedup_rows` for all-drug work (notebook 01's
+  drug selection) and `build_merged` / `dedup_drug_rows` for a single target drug. Replaces the old
+  `preprocess_data.py`, which skipped both mandatory rules below and would have produced a
+  different, wrong dataset.
 - `tests/` — pytest suite covering the dedup rule, the `IsDefaultEntryForModel` filter, the
   no-leakage contract, and split determinism/stratification. Runs without the 518 MB matrix
   (synthetic expression fixture joined to the real tracked `Model.csv`/GDSC2 CSV).

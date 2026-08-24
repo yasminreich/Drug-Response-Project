@@ -1,0 +1,24 @@
+# Tool configuration only — deliberately no [project] table and no packaging.
+# src/ stays a plain directory and the notebooks' sys.path inserts keep working,
+# so nothing about how the code runs changes.
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+extend-exclude = ["notebooks"]   # notebooks are linted by eye, not by ruff
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length is handled by the formatter, not enforced here
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests deliberately compare against True to prove IsDefaultEntryForModel is a
+# string, and import fixtures that look unused to linters.
+"tests/*" = ["E712", "F401", "B011"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]

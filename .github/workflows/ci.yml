@@ -7,10 +7,34 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Least privilege: nothing here writes to the repo.
+permissions:
+  contents: read
+
+# A second push supersedes the first rather than queueing another ~2 GB build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Install ruff
+        run: pip install ruff==0.8.6
+      - name: Run ruff
+        run: ruff check .
+
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -26,15 +50,25 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Run pytest
-        run: pytest tests/ -q
+        run: pytest tests/
 
   docker-build:
     name: Docker image builds
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
+      - uses: docker/setup-buildx-action@v3
+
       # Proves the build command documented in README.md / CLAUDE.md still works
-      # with the pinned requirements. Build only, never pushed.
+      # with the pinned requirements. Build only, never pushed. Layer caching
+      # keeps the ~2 GB torch install off the critical path on repeat runs.
       - name: Build drug_response_env
-        run: docker build -t drug_response_env .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: drug_response_env:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
