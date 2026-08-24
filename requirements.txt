@@ -8,7 +8,7 @@
 # Results are version-sensitive: scikit-learn, xgboost and torch can all shift the
 # reported R2 across releases. Re-pin deliberately, and re-run notebook 03 if you do.
 # Python 3.9.25.
-pandas==2.3.3
+pandas==3.0.5
 numpy==2.0.2
 scipy==1.13.1
 scikit-learn==1.6.1
